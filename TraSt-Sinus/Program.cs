@@ -5,8 +5,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TraSt_Sinus {
     internal class Program {
-
-
+        static volatile bool _abortedByQ = false;
 
         static void Main(string[] args) {
 
@@ -51,7 +50,7 @@ namespace TraSt_Sinus {
             // Create a trajectory streaming configuration object with the desired parameters.
             var streaming = new TrajectoryStreaming {
                 AxisGroup = axisGroup,                                                                  // define which group of axes should execute the streamed motion commands
-                StreamRate = (uint)_streamRate,                                                         // intervall between streamed points in microseconds
+                StreamRate = (uint)_streamRate,                                                         // interval between streamed points in microseconds
                 Override = 100f,                                                                        // speed override in percent, 100% means the speed is not overridden
                 ContinousMode = false,
                 Redundance = true
@@ -74,6 +73,28 @@ namespace TraSt_Sinus {
             #endregion
 
 
+            #region AbortionTask
+            // Create a thread to listen for user input to abort the streaming process by pressing 'q'.
+            Thread _inputThread = new Thread(() => {
+                while (true) {
+                    var key = Console.ReadKey(intercept: true);
+
+                    if (key.KeyChar == 'q') {
+                        streaming.Stop();
+                        _abortedByQ = true;                                                             // set the flag to true if the user pressed 'q' to abort the process
+                        break;
+                    }
+                    Thread.Sleep(100);
+                }
+            });
+
+            _inputThread.IsBackground = true;
+            _inputThread.Start();
+
+            Console.WriteLine("\nStreaming can always be aborted by pressing the key \"q\".");
+            #endregion
+
+
             #region CreatingAndStartStreaming
 
             // Prepare for calculation and segmentation of trajectory points
@@ -81,26 +102,25 @@ namespace TraSt_Sinus {
             int maxNumPointsPerSegment = 5000;                                                                      // maximal number of trajectory points in one segment
             int numSegments = (int)Math.Ceiling((double)numTotalPoints / maxNumPointsPerSegment);                   // number of segments
             double timeBetweenPoints = 1.0 / _streamRate;                                                           // time interval between consecutive points in seconds                                              
-            bool abort = false;                                                                                     // flag to abort the streaming process if needed
+            bool abortedByError = false;                                                                            // flag to abort the streaming process if needed
             Console.WriteLine($"\nStarting trajectory streaming with {numTotalPoints} points, divided into {numSegments} segments of up to {maxNumPointsPerSegment} points each.");
 
 
             // Generate and stream trajectory segments to the drive: 
             // Each segment contains precomputed position values (sinusoidal) for all axes
             // Segments are sent sequentially to the streaming buffer, ensuring reliable transmissions.
-            for (int segment = 0; (segment < numSegments) && (!abort); segment++) {
+            for (int segment = 0; (segment < numSegments) && (!abortedByError) && (!_abortedByQ); segment++) {
 
                 int segmentStartPointIndex = segment * maxNumPointsPerSegment;                                      // Index of the first trajectory point in the current segment ( = p[segmentStartPoint, X])
                 int pointsInSegment = Math.Min(maxNumPointsPerSegment, numTotalPoints - segmentStartPointIndex);    // How many points are in this segment? If the segment is the last one, it might have fewer points than maxNumPointsPerSegment.
                 double[,] positions = new double[pointsInSegment, axisGroup.Axes.Count];                            // Initialize a 2D array to store the values (positions) for all trajectory points in this segment (rows = trajectory points; columns = axes in axis group)
 
 
-                for (int i = 0; i < pointsInSegment; i++) {                                                         // Loop through each trajectory point in the current segment to calculate its value (position)
+                for (int i = 0; i < pointsInSegment && !_abortedByQ; i++) {                                         // Loop through each trajectory point in the current segment to calculate its value (position)
 
                     int globalPointIndex = segmentStartPointIndex + i;                                              // Calculate the global index of the point (relative to the whole trajectory)
                     double t = globalPointIndex * timeBetweenPoints;                                                // Calculate the time corresponding to the actual point
                     double value = Math.Sin(2 * Math.PI * t);                                                       // Calculate the sinusoidal position value at time t
-
 
                     for (int j = 0; j < axisGroup.Axes.Count; j++) {                                                // Assign the calculated value to each trajectory point for all axes in the axis group
                         positions[i, j] = value;
@@ -113,7 +133,7 @@ namespace TraSt_Sinus {
                 // A complete segment is now ready to be streamed to the drive.
                 // Attempt to add it to the streaming buffer. If the buffer is full, wait and retry.
                 // If an error occurs during streaming, abort the process.
-                while (true) {
+                while (!_abortedByQ) {
                     try {
                         bool ok = streaming.Move(positions, null, isLastSegment);                                   // Add to streaming buffer
                         if (ok) { break; }                                                                          // Exit the loop if the move was successful
@@ -121,10 +141,10 @@ namespace TraSt_Sinus {
                             Console.WriteLine("Buffer full, waiting...");
                             Thread.Sleep(10);
                         }
-                    } catch (Exception ex)                                                                            // catch any exception that occurs during the streaming process
+                    } catch (Exception ex)                                                                          // catch any exception that occurs during the streaming process
                       {
-                        Console.WriteLine($"Error during streaming.Move() {ex.Message}");
-                        abort = true; // Set abort flag to true if an error occurs                                  // set abort flat
+                        Console.WriteLine($"\nError during streaming.Move() {ex.Message}");
+                        abortedByError = true;                                                                      // Set abort flag to true if an error occurs
                         break;
                     }
                 }
@@ -132,6 +152,8 @@ namespace TraSt_Sinus {
 
                 // Update and display a progress bar 
                 // showing ho many segments have been added to the streaming buffer.
+                if (_abortedByQ || abortedByError) { break; }                                                       // If the user has aborted the process, exit the loop
+
                 int barLength = 40;
                 int progress = (int)((double)(segment + 1) / numSegments * barLength);                              // Calculate the progress based on the current segment
                 string bar = new string('#', progress).PadRight(barLength, '-');
@@ -145,25 +167,30 @@ namespace TraSt_Sinus {
             // After all segments have been added to the streaming buffer, 
             // wait until the streaming buffer has fully sent the trajectory data to the drive. 
             // Once streaming is complete or aborted, disable the axis group and display the result.
-            if (streaming.IsStreaming) {
+            if (streaming.IsStreaming && !_abortedByQ && !abortedByError) {
                 Console.WriteLine("\n\nWaiting for the streaming buffer to finish sending all segments to the drive:");
             }
 
-            while (streaming.IsStreaming && !abort) {                                           // Wait until all trajectory data has been sent or until an abort occurs
-                Console.Write(".");                                                             // visual indication of waiting
+            while (streaming.IsStreaming && !_abortedByQ && !abortedByError) {                          // Wait until all trajectory data has been sent or until an abort occurs
+                Console.Write(".");                                                                     // visual indication of waiting
                 Thread.Sleep(500);
             }
 
-            axisGroup.Disable();                                                                // Disable the axis group to stop any further commands
-            if (!abort) {
+            axisGroup.Disable();                                                                        // Disable the axis group to stop any further commands
+
+            if (!abortedByError && !_abortedByQ) {
                 Console.WriteLine("\n\nMovement completed successfully.");
             } else {
-                axisGroup.Disable();
-                Console.WriteLine("\n\nMovement aborted because an error occurred.");
+                if (_abortedByQ) {
+                    Console.WriteLine("\n\nMovement safely aborted by user by pressing the key \"q\".");
+                } else {
+                    Console.WriteLine("\n\nMovement aborted due to an error during streaming.");
+                }
             }
-        }
-        #endregion
 
+            #endregion
+        
+        }
 
         /// <summary>
         ///  Connects to the available axes in the TAM topology and returns a list of TraStAxis instances 
