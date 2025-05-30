@@ -1,6 +1,7 @@
 ﻿using Triamec.Tam;
 using Triamec.Tam.Periphery;
 using Triamec.TriaLink.Adapter;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TraSt_Sinus {
     internal class Program {
@@ -10,125 +11,159 @@ namespace TraSt_Sinus {
         static void Main(string[] args) {
 
             #region Configuration
-            int numberOfAxes;               // number of axes the application can work with
-            List<TraStAxis> axes;           // list of axes the application can work with
-            double duration;
-            double streamRate = 50000;      // Hz (50 kHz)
+
+            int _numberOfAxes;               // number of axes the application can work with
+            List<TraStAxis> _axes;           // list of axes the application can work with
+            double _duration;
+            double _streamRate = 50000;      // Hz
 
 
-
-            while (true) {                                                                          // User needs to configure how many Axes he wants to use. The input needs to
-                Console.WriteLine("How many Axes do you want to use? (Enter a number)");            //  be a valid integer, else the loop continues until a valid input is given.
+            // User needs to configure how many axes he wants to use. The input needs to be a 
+            // valid integer, else the loop continues until a valid input is given. 
+            while (true) {
+                Console.WriteLine("How many Axes do you want to use? (Enter a number)");
                 string? input = Console.ReadLine();
 
-                if (int.TryParse(input, out numberOfAxes)) {                                        // check if valid
+                if (int.TryParse(input, out _numberOfAxes)) {                                           // check if valid
                     break;
                 } else {
-                    Console.WriteLine("Invalid input. Please enter a valid number (integer).\n");   // if not valid, print error message and continue loop
+                    Console.WriteLine("Invalid input. Please enter a valid number (integer).\n");       // if not valid, print error message and continue loop
                     continue;
                 }
             }
-            // Get a list with connected TraStAxis instances based on the number of axes the user
-            axes = ConnectAxes(numberOfAxes);                                                       // wants to use or maximum number of axes found.
+            _axes = ConnectAxes(_numberOfAxes);                                                         // Get a list with connected TraStAxis instances based on the number of axes the user
 
-            var axisGroup = new TrajectoryStreamingAxisGroups("MyAxisGroup");                       // create a new axis group for the trajectory streaming
-            foreach (var axis in axes) {                                                            // Add all axes from the list to the axis group for synchronized streaming
+
+            // Set up the axis group for trajectory streaming. 
+            // Includes creating, taking control over the axes, enabling them, and homing them.
+            var axisGroup = new TrajectoryStreamingAxisGroups("MyAxisGroup");                           // create a new axis group for the trajectory streaming
+            foreach (var axis in _axes) {                                                               // Add all axes from the list to the axis group
                 axisGroup.AddAxis(axis);
             }
-
             //TODO: Is OverrideControlSystem really required? And if yes, is it possible over axisGroup?
-            foreach (var axis in axes) {
+            foreach (var axis in _axes) {
                 axis.SetOverrideControlSystem(true);
-            }                                                           // Tell all axis in axis group, that we're going to take control. Otherwise, the axis might reject our commands.
-            axisGroup.Enable().WaitForSuccess(TimeSpan.FromSeconds(5));                             // Enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
-            axisGroup.Home();                                                                       // Home all axes in the axis group. This is required to ensure that all axes are in a known position before starting the trajectory streaming.
+            }                                                                                           // Tell all axis in axis group, that we're going to take control. Otherwise, the axis might reject our commands.
+            axisGroup.Enable().WaitForSuccess(TimeSpan.FromSeconds(5));                                 // Enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
+            axisGroup.Home();                                                                           // Home all axes in the axis group. This is required to ensure that all axes are in a known position before starting the trajectory streaming.
 
 
-            var streaming = new TrajectoryStreaming {                                               // initialize the trajectory streaming configuration with desired parameters
-                AxisGroup = axisGroup,                                                              // define which group of axes should execute the streamed motion commands
-                StreamRate = (uint)streamRate,                                                      // intervall between streamed points in microseconds
-                Override = 100f,                                                                    // speed override in percent, 100% means the speed is not overridden
+            // Create a trajectory streaming configuration object with the desired parameters.
+            var streaming = new TrajectoryStreaming {
+                AxisGroup = axisGroup,                                                                  // define which group of axes should execute the streamed motion commands
+                StreamRate = (uint)_streamRate,                                                         // intervall between streamed points in microseconds
+                Override = 100f,                                                                        // speed override in percent, 100% means the speed is not overridden
                 ContinousMode = false,
-                Redundance = true,
+                Redundance = true
             };
 
 
-            while (true) {                                                                          // User needs to configure how long the movement should last. The input needs to
-                Console.WriteLine("How long should the movement last (seconds)?");                  //  be a valid integer, else the loop continues until a valid input is given.
+            // User needs to configure how long the movement should last. The input needs to
+            // be a valid double, else the loop continues until a valid input is given.
+            while (true) {
+                Console.WriteLine("\nHow long should the movement last (seconds)?");
                 string? input = Console.ReadLine();
 
-                if (double.TryParse(input, out duration)) {                                          // check if valid
+                if (double.TryParse(input, out _duration)) {                                            // check if valid
                     break;
                 } else {
-                    Console.WriteLine("Invalid input. Please enter a valid number (double).\n");    // if not valid, print error message and continue loop
+                    Console.WriteLine("Invalid input. Please enter a valid number (double).\n");        // if not valid, print error message and continue loop
                     continue;
                 }
             }
-
-            int numTotalPoints = (int)(duration * streamRate);                                          // total number of trajectory points to be streamed
-            int maxNumPointsPerSegment = 5000;                                                          // maximal number of trajectory points in one segment
-            int numSegments = (int)Math.Ceiling((double)numTotalPoints / maxNumPointsPerSegment);       // number of segments
-            double timeBetweenPoints = 1.0 / streamRate;                                                // time interval between consecutive points in seconds                                              
-            bool abort = false;                                                                         // flag to abort the streaming process if needed
+            #endregion
 
 
-            // Alle Werte der Trajectory Points werden hier segmentweise berechnet und dann gesendet. 
-            // Dabei findet eine Überprüfung statt und es wird sichergestellt, dass jedes Segment empfangen wird bevor das nächste gesendet wird.
+            #region CreatingAndStartStreaming
+
+            // Prepare for calculation and segmentation of trajectory points
+            int numTotalPoints = (int)(_duration * _streamRate);                                                    // total number of trajectory points to be streamed
+            int maxNumPointsPerSegment = 5000;                                                                      // maximal number of trajectory points in one segment
+            int numSegments = (int)Math.Ceiling((double)numTotalPoints / maxNumPointsPerSegment);                   // number of segments
+            double timeBetweenPoints = 1.0 / _streamRate;                                                           // time interval between consecutive points in seconds                                              
+            bool abort = false;                                                                                     // flag to abort the streaming process if needed
+            Console.WriteLine($"\nStarting trajectory streaming with {numTotalPoints} points, divided into {numSegments} segments of up to {maxNumPointsPerSegment} points each.");
+
+
+            // Generate and stream trajectory segments to the drive: 
+            // Each segment contains precomputed position values (sinusoidal) for all axes
+            // Segments are sent sequentially to the streaming buffer, ensuring reliable transmissions.
             for (int segment = 0; (segment < numSegments) && (!abort); segment++) {
 
-                // Index of the first trajectory point in the current segment ( = p[segmentStartPoint, X])
-                int segmentStartPointIndex = segment * maxNumPointsPerSegment;
+                int segmentStartPointIndex = segment * maxNumPointsPerSegment;                                      // Index of the first trajectory point in the current segment ( = p[segmentStartPoint, X])
+                int pointsInSegment = Math.Min(maxNumPointsPerSegment, numTotalPoints - segmentStartPointIndex);    // How many points are in this segment? If the segment is the last one, it might have fewer points than maxNumPointsPerSegment.
+                double[,] positions = new double[pointsInSegment, axisGroup.Axes.Count];                            // Initialize a 2D array to store the values (positions) for all trajectory points in this segment (rows = trajectory points; columns = axes in axis group)
 
-                // How many points are in this segment? If the segment is the last one, it might have fewer points than maxNumPointsPerSegment.
-                int pointsInSegment = Math.Min(maxNumPointsPerSegment, numTotalPoints - segmentStartPointIndex); 
 
-                // Initialize a 2D array to store the values (positions) for all trajectory points in this segment
-                // Rows: points in segment
-                // Columns: axes in axis group
-                double[,] positions = new double[pointsInSegment, axisGroup.Axes.Count];
+                for (int i = 0; i < pointsInSegment; i++) {                                                         // Loop through each trajectory point in the current segment to calculate its value (position)
 
-                // Loop through each trajectory point in the current segment to calculate its value (position)
-                for (int i = 0; i < pointsInSegment; i++) {
+                    int globalPointIndex = segmentStartPointIndex + i;                                              // Calculate the global index of the point (relative to the whole trajectory)
+                    double t = globalPointIndex * timeBetweenPoints;                                                // Calculate the time corresponding to the actual point
+                    double value = Math.Sin(2 * Math.PI * t);                                                       // Calculate the sinusoidal position value at time t
 
-                    // Calculate the global index of the point (relative to the whole trajectory)
-                    int globalPointIndex = segmentStartPointIndex + i;
 
-                    // Calculate the time corresponding to the actual point
-                    double t = globalPointIndex * timeBetweenPoints;
-
-                    // Calculate the sinusoidal position value at time t
-                    double value = Math.Sin(2 * Math.PI * t);
-
-                    // Assign the calculated value to each trajectory point for all axes in the axis group
-                    for (int j = 0; j < axisGroup.Axes.Count; j++) {
+                    for (int j = 0; j < axisGroup.Axes.Count; j++) {                                                // Assign the calculated value to each trajectory point for all axes in the axis group
                         positions[i, j] = value;
                     }
                 }
 
-                bool isLastSegment = (segment == numSegments - 1); // Check if this is the last segment
+                bool isLastSegment = (segment == numSegments - 1);                                                  // Check if this is the last segment
 
+
+                // A complete segment is now ready to be streamed to the drive.
+                // Attempt to add it to the streaming buffer. If the buffer is full, wait and retry.
+                // If an error occurs during streaming, abort the process.
                 while (true) {
                     try {
-                        bool ok = streaming.Move(positions, null, isLastSegment);
-                        if(ok) { break; } // Exit the loop if the move was successful
+                        bool ok = streaming.Move(positions, null, isLastSegment);                                   // Add to streaming buffer
+                        if (ok) { break; }                                                                          // Exit the loop if the move was successful
                         else {
                             Console.WriteLine("Buffer full, waiting...");
                             Thread.Sleep(10);
                         }
-                    }
-                    catch (Exception ex)
-                    { 
+                    } catch (Exception ex)                                                                            // catch any exception that occurs during the streaming process
+                      {
                         Console.WriteLine($"Error during streaming.Move() {ex.Message}");
-                        abort = true; // Set abort flag to true if an error occurs
+                        abort = true; // Set abort flag to true if an error occurs                                  // set abort flat
                         break;
                     }
                 }
-                // TODO: Send the positions to the hardware
+
+
+                // Update and display a progress bar 
+                // showing ho many segments have been added to the streaming buffer.
+                int barLength = 40;
+                int progress = (int)((double)(segment + 1) / numSegments * barLength);                              // Calculate the progress based on the current segment
+                string bar = new string('#', progress).PadRight(barLength, '-');
+                Console.Write($"\r[{bar}] {segment + 1}/{numSegments} segments added to the streaming buffer.");
+            }
+            #endregion
+
+
+            #region WaitingForStreamingCompletion
+
+            // After all segments have been added to the streaming buffer, 
+            // wait until the streaming buffer has fully sent the trajectory data to the drive. 
+            // Once streaming is complete or aborted, disable the axis group and display the result.
+            if (streaming.IsStreaming) {
+                Console.WriteLine("\n\nWaiting for the streaming buffer to finish sending all segments to the drive:");
             }
 
+            while (streaming.IsStreaming && !abort) {                                           // Wait until all trajectory data has been sent or until an abort occurs
+                Console.Write(".");                                                             // visual indication of waiting
+                Thread.Sleep(500);
+            }
 
-            #endregion
+            axisGroup.Disable();                                                                // Disable the axis group to stop any further commands
+            if (!abort) {
+                Console.WriteLine("\n\nMovement completed successfully.");
+            } else {
+                axisGroup.Disable();
+                Console.WriteLine("\n\nMovement aborted because an error occurred.");
+            }
         }
+        #endregion
+
 
         /// <summary>
         ///  Connects to the available axes in the TAM topology and returns a list of TraStAxis instances 
@@ -155,23 +190,16 @@ namespace TraSt_Sinus {
                 Console.WriteLine($"The application continues with {allFoundAxes.Length}");
             }
 
-            Console.WriteLine("\n");                                                        // print a blank line for better readability in the console output
-
             List<TraStAxis> axes = new List<TraStAxis>();                                   // initialize an empty list to store the axes the application will work with
-                                                                                            // 
+
+            Console.WriteLine();                                                            // for readability
+
             for (int i = 0; i < numberOfAxes && i < allFoundAxes.Length; i++) {             // iterate through the found axes, but only to the number of axes requested or the number of axes found, whichever is smaller
                 Console.WriteLine($"...Connecting to {allFoundAxes[i].Name} of station {allFoundAxes[i].Drive.Station.Name}.");
-                axes.Add(new TraStAxis(allFoundAxes[i]));                                   // create a new TraStAxis instance based on the found axis and add it to the list 
-                axes[i].Station.Name = allFoundAxes[i].Drive.Station.Name;                  // set the station name explicitly (required for later reference) 
-                //TODO -> is it really required?                                             
+                axes.Add(new TraStAxis(allFoundAxes[i]));                                   // create a new TraStAxis instance based on the found axis and add it to the list                                            
             }
 
             return axes;                                                                    // return the created list of TraStAxis
         }
-
-        static void Disable() {
-            throw new NotImplementedException();
-        }
-
     }
 }
