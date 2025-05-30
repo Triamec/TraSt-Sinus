@@ -39,6 +39,6 @@ In the System Explorer, the head is shown in black — always a bit ahead — an
 - The drive must be connected via Ethernet.
 - When controlling multiple drives, they must be connected using Ethernet in a TriaLink.
 
-## Software Prerequisites
+## Software Prequisites
 - This project is made and built with [Microsoft Visual Studio](https://visualstudio.microsoft.com/en/)
 - It is reccomended to visualize the behaviour of the application in the  [TAM Software](https://www.triamec.com/en/tam-software-support.html) installation
