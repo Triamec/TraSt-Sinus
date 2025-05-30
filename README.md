@@ -33,7 +33,7 @@ In the System Explorer, the head is shown in black — always a bit ahead — an
 
 ## Hardware Prequisites
 - A Triamec drive is required to run the application.
-- The drive must be running firmware version 4.25.0 or higher and have the TS feature key enabled.
+- The drive must be running firmware version 4.25.0 or higher and have the TS feature key enabled (TraSt License).
 - If you want to operate the drive without a motor, upload the configuration file TraSt1.TAMcfg from this GitHub repository to your drive.
 - If using motors, each axis must have a motor and encoder connected and configured with a stable position controller.
 - The drive must be connected via Ethernet.
