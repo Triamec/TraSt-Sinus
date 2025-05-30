@@ -25,7 +25,7 @@ The following image shows two axes controlled by the application, moving along s
 To understand the TableHead and TableTail, the following image may help:
 
 <p align="center">
-  <img src="./doc/RingBuffer.png" alt="RingBuffer concept" width="400"/>
+  <img src="RingBuffer.png" ./doc/ alt="RingBuffer concept" width="400"/>
 </p>
 
 The ring buffer (blue) is a fixed-size circular data structure where the end connects back to the start. On the drive, this ring buffer has many more entries than shown here. Data is written at the head and read from the tail. When either pointer reaches the end of the buffer, it wraps around to the beginning. The buffer is full when the head is about to overwrite unread data at the tail, and empty when the head and tail are at the same position.
