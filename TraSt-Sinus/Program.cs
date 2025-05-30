@@ -1,4 +1,5 @@
-﻿using Triamec.Tam;
+﻿// Copyright © 2025 Triamec Motion AG
+using Triamec.Tam;
 using Triamec.Tam.Periphery;
 using Triamec.TriaLink.Adapter;
 using static System.Runtime.InteropServices.JavaScript.JSType;

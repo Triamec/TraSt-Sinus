@@ -1,4 +1,5 @@
-﻿using Triamec.Tam;
+﻿// Copyright © 2025 Triamec Motion AG
+using Triamec.Tam;
 using Triamec.Tam.Registers.Tags;
 using Triamec.Tam.Registers;
 using Triamec.Tam.Requests;
