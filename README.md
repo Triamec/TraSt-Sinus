@@ -31,8 +31,14 @@ To understand the TableHead and TableTail, the following image may help:
 The ring buffer (blue) is a fixed-size circular data structure where the end connects back to the start. On the drive, this ring buffer has many more entries than shown here. Data is written at the head and read from the tail. When either pointer reaches the end of the buffer, it wraps around to the beginning. The buffer is full when the head is about to overwrite unread data at the tail, and empty when the head and tail are at the same position.
 In the System Explorer, the head is shown in black — always a bit ahead — and the tail in red, showing the current read position of the drive.
 
-## How to Start
-Before running the application, please ensure the following prerequisites:
-* The drive runs firmware version 4.25.0-proto
-* You have the correct feature key (e.g., xx-TS)
-* The configuration files from this GitHub repository (TraSt1.TAMcfg) have been uploaded to your drive
+## Hardware Prequisites
+- A Triamec drive is required to run the application.
+- The drive must be running firmware version 4.25.0 or higher and have the TS feature key enabled.
+- If you want to operate the drive without a motor, upload the configuration file TraSt1.TAMcfg from this GitHub repository to your drive.
+- If using motors, each axis must have a motor and encoder connected and configured with a stable position controller.
+- The drive must be connected via Ethernet.
+- When controlling multiple drives, they must be connected using Ethernet in a TriaLink.
+
+## Software Prerequisites
+- This project is made and built with [Microsoft Visual Studio](https://visualstudio.microsoft.com/en/)
+- It is reccomended to visualize the behaviour of the application in the  [TAM Software](https://www.triamec.com/en/tam-software-support.html) installation
