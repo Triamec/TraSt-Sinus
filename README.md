@@ -35,4 +35,4 @@ In the System Explorer, the head is shown in black — always a bit ahead — an
 Before running the application, please ensure the following prerequisites:
 * The drive runs firmware version 4.25.0-proto
 * You have the correct feature key (e.g., xx-TS)
-* The configuration files from this GitHub repository have been uploaded to your drive
+* The configuration files from this GitHub repository (TraSt1.TAMcfg) have been uploaded to your drive
