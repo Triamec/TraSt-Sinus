@@ -29,19 +29,39 @@ namespace TraSt_Sinus {
                     continue;
                 }
             }
-            _axes = ConnectAxes(_numberOfAxes);                                                         // Get a list with connected TraStAxis instances based on the number of axes the user
+
+
+            ///  Search for all axes in the TAM topology and create a TrajectoryStreamingAxisGroup with the requested number of axes.
+            /// This method initializes the TAM topology, identifies connected hardware over the network, 
+            /// and collects available axes using a depth-first search approach. If fewer axes are found than requested
+            /// a warning is printed and only the found axes are returned.
+            TamTopology topology = new TamTopology();                                       // create the root object representing the topology of the TAM hardware
+            TamSystem system = topology.AddLocalSystem(DataLinkLayers.Network);             // adds the local TAM on this PC to the topology
+            system.Identify();                                                              // boot the Tria-Link so that it learns about connected stations
+
+            //TODO Kann ich hier auch Tam configurations auf Drives laden?
+
+            TamAxis[]? allFoundAxes = topology.AsDepthFirst<TamAxis>().ToArray();           // create a list with all axes found in the topology
+            if (allFoundAxes.Length < _numberOfAxes) {                                      // check if the number of axes found is less than the number of axes requested
+                Console.WriteLine($"\nOnly {allFoundAxes.Length} axes found, but You requested to control {_numberOfAxes} axes.");
+                Console.WriteLine($"The application continues with {allFoundAxes.Length}");
+            }
+
+            var axisGroup = new TrajectoryStreamingAxisGroups("MyAxisGroup");                           // create a new axis group for the trajectory streaming
+
+            for (int i = 0; i < _numberOfAxes && i < allFoundAxes.Length; i++) {             // iterate through the found axes, but only to the number of axes requested or the number of axes found, whichever is smaller
+                Console.WriteLine($"...Connecting to {allFoundAxes[i].Name} of station {allFoundAxes[i].Drive.Station.Name} and add to axisGroup.");
+                axisGroup.AddAxis(new TraStAxis(allFoundAxes[i]));                                   // create a new TraStAxis instance based on the found axis and add it to the list                                            
+            }
 
 
             // Set up the axis group for trajectory streaming. 
-            // Includes creating, taking control over the axes, enabling them, and homing them.
-            var axisGroup = new TrajectoryStreamingAxisGroups("MyAxisGroup");                           // create a new axis group for the trajectory streaming
-            foreach (var axis in _axes) {                                                               // Add all axes from the list to the axis group
-                axisGroup.AddAxis(axis);
-            }
+            // Includes taking control over the axes, enabling them, and homing them
             //TODO: Is OverrideControlSystem really required? And if yes, is it possible over axisGroup?
-            foreach (var axis in _axes) {
+            foreach (TraStAxis axis in axisGroup.Axes) {                                            // tell all axis in axis group, that we're going to take control. Otherwise, the axis might reject our commands
                 axis.SetOverrideControlSystem(true);
-            }                                                                                           // Tell all axis in axis group, that we're going to take control. Otherwise, the axis might reject our commands.
+            }
+
             axisGroup.Enable().WaitForSuccess(TimeSpan.FromSeconds(5));                                 // Enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
             axisGroup.Home();                                                                           // Home all axes in the axis group. This is required to ensure that all axes are in a known position before starting the trajectory streaming.
 
@@ -189,43 +209,6 @@ namespace TraSt_Sinus {
 
             #endregion
         
-        }
-
-        /// <summary>
-        ///  Connects to the available axes in the TAM topology and returns a list of TraStAxis instances 
-        ///  up to the number by the user.
-        ///  
-        /// This method initializes the TAM topology, identifies connected hardware over the network, 
-        /// and collects available axes using a depth-first search approach. If fewer axes are found than requested
-        /// a warning is printed and only the found axes are returned.
-        /// 
-        /// </summary>
-        /// <param name="numberOfAxes"> The number of axes the application intends to control</param>
-        /// <returns>A list of connected TraStAxis objects</returns>
-        static List<TraStAxis> ConnectAxes(int numberOfAxes) {
-            TamTopology topology = new TamTopology();                                       // create the root object representing the topology of the TAM hardware
-            TamSystem system = topology.AddLocalSystem(DataLinkLayers.Network);             // adds the local TAM on this PC to the topology
-            system.Identify();                                                              // boot the Tria-Link so that it learns about connected stations
-
-            //TODO Kann ich hier auch Tam configurations auf Drives laden?
-
-            TamAxis[]? allFoundAxes = topology.AsDepthFirst<TamAxis>().ToArray();           // create a list with all axes found in the topology
-
-            if (allFoundAxes.Length < numberOfAxes) {                                       // check if the number of axes found is less than the number of axes requested
-                Console.WriteLine($"\nOnly {allFoundAxes.Length} axes found, but You requested to control {numberOfAxes} axes.");
-                Console.WriteLine($"The application continues with {allFoundAxes.Length}");
-            }
-
-            List<TraStAxis> axes = new List<TraStAxis>();                                   // initialize an empty list to store the axes the application will work with
-
-            Console.WriteLine();                                                            // for readability
-
-            for (int i = 0; i < numberOfAxes && i < allFoundAxes.Length; i++) {             // iterate through the found axes, but only to the number of axes requested or the number of axes found, whichever is smaller
-                Console.WriteLine($"...Connecting to {allFoundAxes[i].Name} of station {allFoundAxes[i].Drive.Station.Name}.");
-                axes.Add(new TraStAxis(allFoundAxes[i]));                                   // create a new TraStAxis instance based on the found axis and add it to the list                                            
-            }
-
-            return axes;                                                                    // return the created list of TraStAxis
         }
     }
 }
