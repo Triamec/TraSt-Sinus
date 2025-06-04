@@ -42,3 +42,10 @@ In the System Explorer, the head is shown in black — always a bit ahead — an
 ## Software Prequisites
 - This project is made and built with [Microsoft Visual Studio](https://visualstudio.microsoft.com/en/)
 - It is reccomended to visualize the behaviour of the application in the  [TAM Software](https://www.triamec.com/en/tam-software-support.html) installation
+
+## Operate the TraSt-Sinus Application
+The TraSt-Sinus application is a command-line tool designed to initialize the TAM System and generate a sinusoidal trajectory path, which is streamed segment-wise to a configurable number of motion axes over a specified duration.. It consists the following key components: 
+- **Program:** Serves as the entry point of the application
+- **Controller:** Orchestrates the main workflow. It initializzes the TAM system, sets up the axis groupand coordinates the calculation and streaming of trajectory data. It relies on helper classes (SineSegmentGenerator and StreamingAbortListener) to perform specific tasks.
+- **SineSegmentGenerator:** Responsible for calculating sinusoidal trajectory points in sequential segments.
+- **StreamingAbortListener:** Runs in a background thread and listens for user to press 'q' or 'ESC' key to safely abort the streaming process. It also provides an AbortByError() method for handling unexpected errors and tracks whether streaming was stopped by user input or due to a failure.
