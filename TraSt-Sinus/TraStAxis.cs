@@ -201,6 +201,7 @@ namespace TraSt_Sinus {
         public float ModuloPositionMaximum { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public float ModuloPositionMinimum { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string PositionUnit { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        //ToDo: implement
         public AxisErrorIdentification Error{get => AxisErrorIdentification.None; set => Console.WriteLine("HelloSet"); }
         public AxisState State => _axis.ReadAxisState();
         public int AxisIndex => _axis.AxisIndex;
