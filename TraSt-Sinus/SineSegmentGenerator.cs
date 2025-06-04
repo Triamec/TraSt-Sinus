@@ -40,7 +40,7 @@ namespace TraSt_Sinus {
             double[,] segmentData = new double[rowsInThisSegment, _numTotalColumns];                // create a buffer for the segment data with the number of rows and columns
 
 
-            for (int i = 0; i < _maxRowsPerSegment; i++) {                                          // iterate through all the rows in the segment
+            for (int i = 0; i < rowsInThisSegment; i++) {                                          // iterate through all the rows in the segment
                 int globalRowIndex = _currentSegmentIndex * _maxRowsPerSegment + i;
                 double t = globalRowIndex * _timeBetweenPoints;
                 double value = Math.Sin(2 * Math.PI * t);                                           // calculate the sine value for the current time point

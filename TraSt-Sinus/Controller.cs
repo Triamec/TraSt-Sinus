@@ -115,11 +115,20 @@ namespace TraSt_Sinus {
             }
 
             if (!_abortListener.IsAborted) {
-                Console.WriteLine("\n\n Streaming completed successfully.");
+                Console.WriteLine("\n\nStreaming completed successfully.");
             }
 
-            _axisGroup.Disable().WaitForSuccess(TimeSpan.FromSeconds(5));                                   // disable the axis group after streaming is completed
 
+            _axisGroup.Disable().WaitForSuccess(TimeSpan.FromSeconds(5));                                   // disable the axis group after streaming is completed
+            
+            Console.WriteLine("Press 'e' to exit the application.");
+            while (true) {                                                                                  // wait for user to press 'q' or 'ESC' to exit the application
+                var key = Console.ReadKey(intercept: true);
+                if (key.Key == ConsoleKey.E) {
+                    break;
+                }
+                Thread.Sleep(100);
+            }
         }
 
     }

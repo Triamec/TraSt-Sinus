@@ -29,7 +29,7 @@ namespace TraSt_Sinus {
         private void ListenForAbortKey() {
             while (!IsAborted) {
                 var key = Console.ReadKey(intercept: true);
-                if (key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) {
+                if ((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && Streaming.IsStreaming) {
                     Console.WriteLine("\n\nAborted streaming safely by pressing 'q' or 'ESC'.");
                     Streaming.Stop();
                     AbortedByQ = true;
