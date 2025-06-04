@@ -53,6 +53,6 @@ namespace TraSt_Sinus {
             return segmentData;
         }
 
-        public bool HasMoreData() { return _isLastSegment; }
+        public bool HasMoreData() { return !_isLastSegment; }
     }
 }

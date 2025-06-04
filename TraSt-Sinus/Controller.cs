@@ -33,6 +33,7 @@ namespace TraSt_Sinus {
                 }
             }
 
+            Console.WriteLine("\nSet up TamSystem... ");
             TamTopology topology = new TamTopology();                                                       // create the root object representing the topology of the TAM hardware
             TamSystem system = topology.AddLocalSystem(DataLinkLayers.Network);                             // adds the local TAM on this PC to the topology, but looks only for the network layer
             system.Identify();                                                                              // identify the system, which will connect to the TAM hardware and discover all axes
@@ -86,18 +87,19 @@ namespace TraSt_Sinus {
         }
 
         public void StreamSinus() {
+            Console.WriteLine("Start streaming sine segments:");
             while (!_abortListener.IsAborted && _sineSegmentGenerator.HasMoreData()) {                      // while the streaming is not aborted and duration is not passed, stream the sine segments
-                double[,] segmentData = _sineSegmentGenerator.GenerateSegment();                                 // generate a new segment of sine data
+                double[,] segmentData = _sineSegmentGenerator.GenerateSegment();                            // generate a new segment of sine data
 
                 while (true && !_abortListener.IsAborted) {
                     try {
-                        bool ok = _streaming.Move(segmentData, null, !_sineSegmentGenerator.HasMoreData());
+                        bool ok = _streaming.Move(segmentData, null, !_sineSegmentGenerator.HasMoreData()); 
                         if (ok) { break; } else {                                                           // sending to streaming-buffer succeeded, proceed to next segment
                             Console.WriteLine("Streaming buffer full, waiting...");
                             Thread.Sleep(10);                                                               // wait and retry if buffer is full
                         }
                     } catch (Exception ex) {                                                                // if move throws error, mark as aborted due to error and exit
-                        _abortListener.AbortByError();
+                        _abortListener.AbortByError(ex);
                         break;
                     }
                 }

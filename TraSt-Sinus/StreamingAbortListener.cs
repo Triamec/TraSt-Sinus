@@ -12,10 +12,10 @@ namespace TraSt_Sinus {
 
         public bool IsAborted => AbortedByerror || AbortedByQ;
 
-        public void AbortByError() {
+        public void AbortByError(Exception ex) {
             AbortedByerror = true;
             Streaming.Stop();
-            Console.WriteLine("\nAborted streaming due to error.");
+            Console.WriteLine($"\nAborted streaming due to error: {ex.Message}");
         }
 
         public void Start() {
