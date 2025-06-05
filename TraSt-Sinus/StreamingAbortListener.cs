@@ -10,7 +10,7 @@ namespace TraSt_Sinus {
         private bool AbortedByQ { get; set; } = false;
         private bool AbortedByerror { get; set; } = false;
 
-        public bool Exit { get; set; } = false;
+        public bool Exit { get; private set; } = false;
         public bool IsAborted => AbortedByerror || AbortedByQ;
         private bool _listenToExit = false;
         public bool ListenToExit {
@@ -37,13 +37,13 @@ namespace TraSt_Sinus {
         private void ListenForAbortKey() {
             while (!IsAborted) {
                 var key = Console.ReadKey(intercept: true);
-                if ((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && Streaming.IsStreaming && _listenToExit == false) {
+                if ((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && Streaming.IsStreaming && ListenToExit == false) {
                     Console.WriteLine("\n\nAborted streaming safely by pressing 'q' or 'ESC'.");
                     Streaming.Stop();
                     AbortedByQ = true;
                     break;
                 }
-                if((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && _listenToExit == true) {
+                if((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && ListenToExit == true) {
                     Exit = true;
                 }
                 Thread.Sleep(100);
