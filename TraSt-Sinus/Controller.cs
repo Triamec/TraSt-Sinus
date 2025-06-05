@@ -2,13 +2,14 @@
 // Copyright © 2025 Triamec Motion AG
 
 using Triamec.Tam;
+using Triamec.TriaLink;
 using Triamec.TriaLink.Adapter;
 
 
 namespace TraSt_Sinus {
     internal class Controller {
         readonly TrajectoryStreamingAxisGroups _axisGroup;
-        readonly double _streamRate = 50000;                             // Hz
+        readonly double _streamRate = 10000;                             // Hz
         TrajectoryStreaming _streaming;
         StreamingAbortListener _abortListener;
         SineSegmentGenerator _sineSegmentGenerator;
@@ -44,15 +45,17 @@ namespace TraSt_Sinus {
                 Console.WriteLine($"\nOnly {allFoundAxes.Length} axes found, but You requested to control {requestedAxesCount} axes.");
                 Console.WriteLine($"The application continues with {allFoundAxes.Length}");
             }
-
+                                                                       
             for (int i = 0; i < requestedAxesCount && i < allFoundAxes.Length; i++) {                       // iterate through the found axes, but only to the number of axes requested or the number of axes found, whichever is smaller
                 Console.WriteLine($"...connecting to {allFoundAxes[i].Name} of station {allFoundAxes[i].Drive.Station.Name} and add to axisGroup.");
+                allFoundAxes[i].Drive.ResetFault();
                 _axisGroup.AddAxis(new TraStAxis(allFoundAxes[i]));                                         // create a new TraStAxis instance based on the found axis and add it to the axis group                                            
             }
 
+            
             //TODO: Is OverrideControlSystem really required? And if yes, maybe possible inside axisGroup?
             foreach (TraStAxis axis in _axisGroup.Axes) {                                                   // tell all axis in axis group, that we're going to take control. Otherwise, the axis might reject our commands
-                axis.SetOverrideControlSystem(true);
+                axis.SetOverrideControlSystem(true);  
             }
 
             _axisGroup.Enable().WaitForSuccess(TimeSpan.FromSeconds(5));                                    // enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
@@ -109,7 +112,7 @@ namespace TraSt_Sinus {
 
             while (_streaming.IsStreaming && !_abortListener.IsAborted) {                                    // wait until the streaming is completed or aborted
                 Console.Write(".");
-                Thread.Sleep(100);
+                Thread.Sleep(500);
             }
 
             if (!_abortListener.IsAborted) {
