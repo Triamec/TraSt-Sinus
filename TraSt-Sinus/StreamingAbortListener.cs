@@ -10,8 +10,16 @@ namespace TraSt_Sinus {
         private bool AbortedByQ { get; set; } = false;
         private bool AbortedByerror { get; set; } = false;
 
+        public bool Exit { get; set; } = false;
         public bool IsAborted => AbortedByerror || AbortedByQ;
-
+        private bool _listenToExit = false;
+        public bool ListenToExit {
+            get => _listenToExit;
+            set {
+                _listenToExit = value;
+                if (value == true) { Console.WriteLine("\nPress 'q' or 'ESC' to quit application.\n"); }
+            }
+        }
         public void AbortByError(Exception ex) {
             AbortedByerror = true;
             Streaming.Stop();
@@ -29,14 +37,18 @@ namespace TraSt_Sinus {
         private void ListenForAbortKey() {
             while (!IsAborted) {
                 var key = Console.ReadKey(intercept: true);
-                if ((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && Streaming.IsStreaming) {
+                if ((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && Streaming.IsStreaming && _listenToExit == false) {
                     Console.WriteLine("\n\nAborted streaming safely by pressing 'q' or 'ESC'.");
                     Streaming.Stop();
                     AbortedByQ = true;
                     break;
                 }
+                if((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && _listenToExit == true) {
+                    Exit = true;
+                }
                 Thread.Sleep(100);
             }
+
         }
     }
 }

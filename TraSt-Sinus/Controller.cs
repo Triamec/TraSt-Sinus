@@ -13,7 +13,7 @@ namespace TraSt_Sinus {
         StreamingAbortListener _abortListener;
         SineSegmentGenerator _sineSegmentGenerator;
         double _duration;
-        readonly int _maxPointsPerSegment = 5000;
+        readonly int _maxPointsPerSegment = 10000;
 
         public Controller() {
             _axisGroup = new TrajectoryStreamingAxisGroups("MyAxisGroup");                                                                                        
@@ -74,10 +74,8 @@ namespace TraSt_Sinus {
                 AxisGroup = _axisGroup,                                                                     // define which group of axes should execute the streamed motion commands
                 StreamRate = (uint)_streamRate,                                                             // interval between streamed points in microseconds
                 Override = 100f,                                                                            // speed override in percent, 100% means the speed is not overridden
-                ContinousMode = false,
-                Redundance = true
             };
-
+            
             _sineSegmentGenerator = new SineSegmentGenerator( _maxPointsPerSegment, _duration, _streamRate, _axisGroup.Axes.Count);
 
             _abortListener = new StreamingAbortListener() {                                                 // Create a listener for aborted streaming
@@ -94,9 +92,9 @@ namespace TraSt_Sinus {
                 while (true && !_abortListener.IsAborted) {
                     try {
                         bool ok = _streaming.Move(segmentData, null, !_sineSegmentGenerator.HasMoreData()); 
-                        if (ok) { break; } else {                                                           // sending to streaming-buffer succeeded, proceed to next segment
+                        if (ok) { Console.WriteLine("Segment added to streaming buffer."); break; } else {                                                           // sending to streaming-buffer succeeded, proceed to next segment
                             Console.WriteLine("Streaming buffer full, waiting...");
-                            Thread.Sleep(10);                                                               // wait and retry if buffer is full
+                            Thread.Sleep(30);                                                               // wait and retry if buffer is full
                         }
                     } catch (Exception ex) {                                                                // if move throws error, mark as aborted due to error and exit
                         _abortListener.AbortByError(ex);
@@ -121,13 +119,11 @@ namespace TraSt_Sinus {
 
             _axisGroup.Disable().WaitForSuccess(TimeSpan.FromSeconds(5));                                   // disable the axis group after streaming is completed
             
-            Console.WriteLine("Press 'e' to exit the application.");
-            while (true) {                                                                                  // wait for user to press 'q' or 'ESC' to exit the application
-                var key = Console.ReadKey(intercept: true);
-                if (key.Key == ConsoleKey.E) {
+            _abortListener.ListenToExit = true;                                                             // change abortKey Listener to exitKey-Listener
+            while(true) {
+                if(_abortListener.Exit == true) {
                     break;
                 }
-                Thread.Sleep(100);
             }
         }
 
