@@ -1,7 +1,7 @@
 # TraSt-Sinus
 
 This C# console application demonstrates trajectory streaming (TraSt) for motion control systems. It allows users to stream a sinusoidal path to a configurable number of axes over a user-defined duration.
-The application continuously sends trajectory segments to the drives and provides feedback. At any time, the user can safely abort the streaming process by pressing q.
+The application continuously calculates trajectory segments in a parallel task and sends them to the drives and provides feedback. At any time, the user can safely abort the streaming process by pressing q.
 
 This example project illustrates how to use the TraSt feature of the TAM API and serves as a beginner-friendly introduction to basic trajectory streaming workflows.
 
@@ -31,7 +31,7 @@ To understand the TableHead and TableTail, the following image may help:
 The ring buffer (blue) is a fixed-size circular data structure where the end connects back to the start. On the drive, this ring buffer has many more entries than shown here. Data is written at the head and read from the tail. When either pointer reaches the end of the buffer, it wraps around to the beginning. The buffer is full when the head is about to overwrite unread data at the tail, and empty when the head and tail are at the same position.
 In the System Explorer, the head is shown in black — always a bit ahead — and the tail in red, showing the current read position of the drive.
 
-## Hardware Prequisites
+## Hardware Prerequisites
 - A Triamec drive is required to run the application.
 - The drive must be running firmware version 4.25.0 or higher and have the TS feature key enabled (TraSt License).
 - If you want to operate the drive without a motor, upload the configuration file TraSt1.TAMcfg from this GitHub repository to your drive.
@@ -39,13 +39,13 @@ In the System Explorer, the head is shown in black — always a bit ahead — an
 - The drive must be connected via Ethernet.
 - When controlling multiple drives, they must be connected using Ethernet in a TriaLink.
 
-## Software Prequisites
+## Software Prerequisites
 - This project is made and built with [Microsoft Visual Studio](https://visualstudio.microsoft.com/en/)
-- It is reccomended to visualize the behaviour of the application in the  [TAM Software](https://www.triamec.com/en/tam-software-support.html) installation
+- It is recommended to visualize the behaviour of the application in the  [TAM Software](https://www.triamec.com/en/tam-software-support.html) installation
 
 ## Operate the TraSt-Sinus Application
-The TraSt-Sinus application is a command-line tool designed to initialize the TAM System and generate a sinusoidal trajectory path, which is streamed segment-wise to a configurable number of motion axes over a specified duration.. It consists the following key components: 
+The TraSt-Sinus application is a command-line tool designed to initialize the TAM System and generate a sinusoidal trajectory path, which is streamed segment-wise to a configurable number of motion axes over a specified duration.. It consists of the following key components: 
 - **Program:** Serves as the entry point of the application
-- **Controller:** Orchestrates the main workflow. It initializzes the TAM system, sets up the axis groupand coordinates the calculation and streaming of trajectory data. It relies on helper classes (SineSegmentGenerator and StreamingAbortListener) to perform specific tasks.
+- **Controller:** Orchestrates the main workflow. It initializes the TAM system, sets up the axis group, and coordinates both the calculation and streaming of trajectory data. While the main thread sends a segment to the drive, the next segment is already being calculated in a parallel thread. It relies on helper classes such as SineSegmentGenerator and StreamingAbortListener to perform specific tasks.
 - **SineSegmentGenerator:** Responsible for calculating sinusoidal trajectory points in sequential segments.
 - **StreamingAbortListener:** Runs in a background thread and listens for user to press 'q' or 'ESC' key to safely abort the streaming process. It also provides an AbortByError() method for handling unexpected errors and tracks whether streaming was stopped by user input or due to a failure.
