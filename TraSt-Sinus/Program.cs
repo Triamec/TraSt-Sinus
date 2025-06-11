@@ -7,7 +7,7 @@ namespace TraSt_Sinus {
         static void Main(string[] args) {
             Controller controller = new Controller();       // create a new instance of the Controller class
             controller.Initialize();
-            controller.StreamSinus();                         // start the streaming
+            controller.StreamSinus();                       // start the streaming
         }
     }
 }

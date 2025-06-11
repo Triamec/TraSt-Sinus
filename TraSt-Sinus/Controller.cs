@@ -1,6 +1,7 @@
 ﻿
 // Copyright © 2025 Triamec Motion AG
 
+using Org.BouncyCastle.Tsp;
 using Triamec.Tam;
 using Triamec.TriaLink;
 using Triamec.TriaLink.Adapter;
@@ -9,12 +10,12 @@ using Triamec.TriaLink.Adapter;
 namespace TraSt_Sinus {
     internal class Controller {
         readonly TrajectoryStreamingAxisGroups _axisGroup;
-        readonly double _streamRate = 50000;                             // Hz
+        readonly double _streamRate = 10000;                             // Hz
         TrajectoryStreaming _streaming;
         StreamingAbortListener _abortListener;
         SineSegmentGenerator _sineSegmentGenerator;
         double _duration;
-        readonly int _maxPointsPerSegment = 100000;
+        readonly int _maxPointsPerSegment = 5000;
 
         public Controller() {
             _axisGroup = new TrajectoryStreamingAxisGroups("MyAxisGroup");
@@ -65,10 +66,10 @@ namespace TraSt_Sinus {
                 Console.WriteLine("\nHow long should the movement last (seconds)?");
                 string? input = Console.ReadLine();
 
-                if (double.TryParse(input, out _duration)) {                                            // check if valid
+                if (double.TryParse(input, out _duration)) {                                                // check if valid
                     break;
                 } else {
-                    Console.WriteLine("Invalid input. Please enter a valid number (double).\n");        // if not valid, print error message and continue loop
+                    Console.WriteLine("Invalid input. Please enter a valid number (double).\n");            // if not valid, print error message and continue loop
                     continue;
                 }
             }
@@ -95,21 +96,23 @@ namespace TraSt_Sinus {
             Task<double[,]>? nextSegmentTask = null;
 
             if (_sineSegmentGenerator.HasMoreData()) {
-                nextSegmentTask = Task.Run(() => { return _sineSegmentGenerator.GenerateSegment(); });                        // Start generating the next segment in a separate task to avoid blocking the main thread
+                nextSegmentTask = Task.Run(()=>_sineSegmentGenerator.GenerateSegment());                    // Start generating the next segment in a separate task to avoid blocking the main thread
             }
 
+            int segmentCounter = 0;
             while (!_abortListener.IsAborted) {                                                             // while the streaming is not aborted and duration is not passed, stream the sine segments
-
+                Console.WriteLine();
                 while (!_abortListener.IsAborted) {
                     try {
                         bool isLastSegment = (nextSegmentTask == null);
                         bool ok = _streaming.Move(currentSegment, null, isLastSegment);
                         if (ok) {
-                            Console.WriteLine("Segment added to streaming buffer.");
+                            segmentCounter++;
+                            Console.Write($"\rSegment {segmentCounter}/{_sineSegmentGenerator._numTotalSegments} added in the streaming buffer.");
                             break;
                         } else {                                                                            // sending to streaming-buffer succeeded, proceed to next segment
-                            Console.WriteLine("Streaming buffer full, waiting...");
-                            Thread.Sleep(30);                                                               // wait and retry if buffer is full
+                            Console.Write("\rStreaming buffer full, waiting...");
+                            Thread.Sleep(10);                                                               // wait and retry if buffer is full
                         }
                     } catch (Exception ex) {                                                                // if move throws error, mark as aborted due to error and exit
                         _abortListener.AbortByError(ex);
@@ -117,12 +120,12 @@ namespace TraSt_Sinus {
                     }
                 }
 
-                if (_abortListener.IsAborted || nextSegmentTask == null) { break; }                                                      // if aborted or no next segment task, exit the loop
+                if (_abortListener.IsAborted || nextSegmentTask == null) { break; }                         // if aborted or no next segment task, exit the loop
 
-                currentSegment = nextSegmentTask.Result;                                                      // wait for the next segment to be generated and get the result
+                currentSegment = nextSegmentTask.Result;                                                    // wait for the next segment to be generated and get the result
 
-                if (_sineSegmentGenerator.HasMoreData()) {                                                      // if there is more data to stream, start generating the next segment
-                    nextSegmentTask = Task.Run(() => { return _sineSegmentGenerator.GenerateSegment(); });
+                if (_sineSegmentGenerator.HasMoreData()) {                                                  // if there is more data to stream, start generating the next segment
+                    nextSegmentTask = Task.Run(() =>_sineSegmentGenerator.GenerateSegment());
                 } else {
                     nextSegmentTask = null;                                                                 // if no more data, set next segment task to null
                 }
@@ -135,7 +138,7 @@ namespace TraSt_Sinus {
 
             while (_streaming.IsStreaming && !_abortListener.IsAborted) {                                    // wait until the streaming is completed or aborted
                 Console.Write(".");
-                Thread.Sleep(500);
+                Thread.Sleep(1000);
             }
 
             if (!_abortListener.IsAborted) {
@@ -147,11 +150,11 @@ namespace TraSt_Sinus {
 
             _abortListener.ListenToExit = true;                                                             // change abortKey Listener to exitKey-Listener
             while (true) {
+                Thread.Sleep(100);
                 if (_abortListener.Exit == true) {
                     break;
                 }
             }
         }
-
     }
 }
