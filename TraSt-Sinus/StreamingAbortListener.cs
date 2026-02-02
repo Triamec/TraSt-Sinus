@@ -2,10 +2,11 @@
 // Copyright © 2025 Triamec Motion AG
 
 using Triamec.Tam;
+using Triamec.Tam.Motion.TrajectoryStreaming;
 
 namespace TraSt_Sinus {
     internal class StreamingAbortListener {
-        public required TrajectoryStreaming Streaming { get; init; }
+        public required ITrajectoryStreamer Streaming { get; init; }
         private Thread? _inputThread;
         private bool AbortedByQ { get; set; } = false;
         private bool AbortedByerror { get; set; } = false;
@@ -22,7 +23,7 @@ namespace TraSt_Sinus {
         }
         public void AbortByError(Exception ex) {
             AbortedByerror = true;
-            Streaming.Stop();
+            Streaming.StopStreaming();
             Console.WriteLine($"\nAborted streaming due to error: {ex.Message}");
         }
 
@@ -39,7 +40,7 @@ namespace TraSt_Sinus {
                 var key = Console.ReadKey(intercept: true);
                 if ((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && Streaming.IsStreaming && ListenToExit == false && AbortedByQ == false) {
                     Console.WriteLine("\n\nAborted streaming safely by pressing 'q' or 'ESC'.");
-                    Streaming.Stop();
+                    Streaming.StopStreaming();
                     AbortedByQ = true;
                 }
                 if((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && ListenToExit == true) {

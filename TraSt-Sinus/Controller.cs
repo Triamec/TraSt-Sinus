@@ -1,33 +1,38 @@
 ﻿
 // Copyright © 2025 Triamec Motion AG
 
-using Org.BouncyCastle.Tsp;
 using Triamec.Tam;
-using Triamec.TriaLink;
+using Triamec.Tam.Motion;
+using Triamec.Tam.Motion.TrajectoryStreaming;
 using Triamec.TriaLink.Adapter;
 
 
 namespace TraSt_Sinus {
-    internal class Controller {
-        readonly TrajectoryStreamingAxisGroups _axisGroup;
-        readonly double _streamRate = 10000;                             // Hz
-        TrajectoryStreaming _streaming;
-        StreamingAbortListener _abortListener;
-        SineSegmentGenerator _sineSegmentGenerator;
-        double _duration;
+    internal class Controller : IAsyncDisposable {
+        readonly double _streamRate = 50000;                // Hz
+        double _duration;                                   // seconds
+        private bool disposedValue;
         readonly int _maxPointsPerSegment = 5000;
 
+        StreamingAbortListener _abortListener;
+        SineSegmentGenerator _sineSegmentGenerator;
+
+        ITrajectoryStreamer _streaming;
+        IAxisGroup<IAxisWithRegisterLayoutId> _axisGroup;
+        IMotionSystem _motionSystem;
+
         public Controller() {
-            _axisGroup = new TrajectoryStreamingAxisGroups("MyAxisGroup");
         }
 
-        public void Initialize() {
+        public async Task Initialize() {
+            _motionSystem = await MotionSystem.Connect().ConfigureAwait(false);
+
             int requestedAxesCount;                                                                         // User needs to configure how many axes he wants to use
             while (true) {
                 Console.WriteLine("How many Axes do you want to use? (Enter a number)");
                 string? input = Console.ReadLine();
 
-                if (int.TryParse(input, out requestedAxesCount) && requestedAxesCount > 0) {                // check if valid
+                if (int.TryParse(input, out requestedAxesCount) && requestedAxesCount > 0) {               // check if valid
                     break;
                 } else {
                     Console.WriteLine("Invalid input. Please enter a positive number (integer).\n");       // if not valid, print error message and continue loop
@@ -47,20 +52,11 @@ namespace TraSt_Sinus {
                 Console.WriteLine($"The application continues with {allFoundAxes.Length}");
             }
 
-            for (int i = 0; i < requestedAxesCount && i < allFoundAxes.Length; i++) {                       // iterate through the found axes, but only to the number of axes requested or the number of axes found, whichever is smaller
-                Console.WriteLine($"...connecting to {allFoundAxes[i].Name} of station {allFoundAxes[i].Drive.Station.Name} and add to axisGroup.");
-                allFoundAxes[i].Drive.ResetFault();
-                _axisGroup.AddAxis(new TraStAxis(allFoundAxes[i]));                                         // create a new TraStAxis instance based on the found axis and add it to the axis group                                            
-            }
 
+            _axisGroup = await _motionSystem.Axes.CreateGroup([.. allFoundAxes.Select(a => a.Name)]);       // create an axis group with the requested number of axes
 
-            //TODO: Is OverrideControlSystem really required? And if yes, maybe possible inside axisGroup?
-            foreach (TraStAxis axis in _axisGroup.Axes) {                                                   // tell all axis in axis group, that we're going to take control. Otherwise, the axis might reject our commands
-                axis.SetOverrideControlSystem(true);
-            }
-
-            _axisGroup.Enable().WaitForSuccess(TimeSpan.FromSeconds(5));                                    // enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
-            _axisGroup.Home();                                                                              // home all axes in the axis group. This is required to ensure that all axes are in a known position before starting the trajectory streaming.
+            await _axisGroup.Enable().ConfigureAwait(false);                                                // enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
+            await _axisGroup.Home().ConfigureAwait(false);                                                  // home all axes in the axis group. This is required to ensure that all axes are in a known position before starting the trajectory streaming.
 
             while (true) {
                 Console.WriteLine("\nHow long should the movement last (seconds)?");
@@ -74,13 +70,10 @@ namespace TraSt_Sinus {
                 }
             }
 
-            _streaming = new TrajectoryStreaming {
-                AxisGroup = _axisGroup,                                                                     // define which group of axes should execute the streamed motion commands
-                StreamRate = (uint)_streamRate,                                                             // interval between streamed points in microseconds
-                Override = 100f,                                                                            // speed override in percent, 100% means the speed is not overridden
-            };
+            _streaming = await _axisGroup.PrepareTrajectoryStreaming().SetStreamRate((uint)_streamRate).CreateStreamer(); // Prepare the trajectory streaming for the axis group with the specified stream rate
+            _streaming.Override = 100f;                                                                     // speed override in percent, 100% means the speed is not overridden
 
-            _sineSegmentGenerator = new SineSegmentGenerator(_maxPointsPerSegment, _duration, _streamRate, _axisGroup.Axes.Count);
+            _sineSegmentGenerator = new SineSegmentGenerator(_maxPointsPerSegment, _duration, _streamRate, _axisGroup.Count);
 
             _abortListener = new StreamingAbortListener() {                                                 // Create a listener for aborted streaming
                 Streaming = _streaming
@@ -88,7 +81,7 @@ namespace TraSt_Sinus {
             _abortListener.Start();                                                                         // Start listening for abort key ('q' or 'ESC') presses in a separate thread.
         }
 
-        public void StreamSinus() {
+        public async Task StreamSinus() {
             Console.WriteLine("Start streaming sine segments:");
 
             double[,] currentSegment = _sineSegmentGenerator.GenerateSegment();
@@ -108,7 +101,7 @@ namespace TraSt_Sinus {
                         bool ok = _streaming.Move(currentSegment, null, isLastSegment);
                         if (ok) {
                             segmentCounter++;
-                            Console.Write($"\rSegment {segmentCounter}/{_sineSegmentGenerator._numTotalSegments} added in the streaming buffer.");
+                            Console.Write($"\rSegment {segmentCounter}/{_sineSegmentGenerator.NumTotalSegments} added in the streaming buffer.");
                             break;
                         } else {                                                                            // sending to streaming-buffer succeeded, proceed to next segment
                             Console.Write("\rStreaming buffer full, waiting...");
@@ -137,7 +130,7 @@ namespace TraSt_Sinus {
             }
 
             while (_streaming.IsStreaming && !_abortListener.IsAborted) {                                    // wait until the streaming is completed or aborted
-                Console.Write(".");
+                Console.Write($"actual: {_streaming.ActualIndex}, streamed: {_streaming.StreamedIndex}\n");
                 Thread.Sleep(1000);
             }
 
@@ -146,7 +139,7 @@ namespace TraSt_Sinus {
             }
 
             Console.WriteLine("\nDisabling axis...");
-            _axisGroup.Disable().WaitForSuccess(TimeSpan.FromSeconds(5));                                   // disable the axis group after streaming is completed
+            await _axisGroup.Disable().ConfigureAwait(false);
 
             _abortListener.ListenToExit = true;                                                             // change abortKey Listener to exitKey-Listener
             while (true) {
@@ -154,6 +147,24 @@ namespace TraSt_Sinus {
                 if (_abortListener.Exit == true) {
                     break;
                 }
+            }
+        }
+
+        public async ValueTask DisposeAsync() {
+            if (!disposedValue) {
+                if (_streaming != null) {
+                    await _streaming.DisposeAsync().ConfigureAwait(false);
+                }
+
+                if (_axisGroup != null) {
+                    await _axisGroup.Disable().ConfigureAwait(false);
+                }
+
+                if (_motionSystem != null) {
+                    await _motionSystem.DisposeAsync().ConfigureAwait(false);
+                }
+
+                disposedValue = true;
             }
         }
     }

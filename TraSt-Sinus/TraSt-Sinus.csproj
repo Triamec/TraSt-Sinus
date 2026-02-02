@@ -9,8 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Triamec.Tam.Core" Version="19.0.2-TraSt20250610" />
-    <PackageReference Include="Triamec.Tam.TriaLink" Version="7.23.2-TraSt20250610" />
+    <PackageReference Include="NLog" Version="6.1.0" />
+    <PackageReference Include="Triamec.Tam.Core" Version="19.0.3-MAxi" />
+    <PackageReference Include="Triamec.Tam.TrajectoryStreaming" Version="0.1.0-MAxi" />
   </ItemGroup>
 
 </Project>
