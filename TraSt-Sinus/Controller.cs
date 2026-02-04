@@ -14,12 +14,12 @@ namespace TraSt_Sinus {
         private bool disposedValue;
         readonly int _maxPointsPerSegment = 5000;
 
-        StreamingAbortListener _abortListener;
-        SineSegmentGenerator _sineSegmentGenerator;
+        StreamingAbortListener _abortListener = null!;
+        SineSegmentGenerator _sineSegmentGenerator = null!;
 
-        ITrajectoryStreamer _streaming;
-        IAxisGroup<IAxisWithRegisterLayoutId> _axisGroup;
-        IMotionSystem _motionSystem;
+        ITrajectoryStreamer _streaming = null!;
+        IAxisGroup<IAxisWithRegisterLayoutId> _axisGroup = null!;
+        IMotionSystem _motionSystem = null!;
 
         public Controller() {
         }
