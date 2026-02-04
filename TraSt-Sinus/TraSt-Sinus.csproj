@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NLog" Version="6.1.0" />
     <PackageReference Include="Triamec.Tam.Core" Version="19.1.0-MAxi" />
     <PackageReference Include="Triamec.Tam.TrajectoryStreaming" Version="0.1.0" />
   </ItemGroup>
