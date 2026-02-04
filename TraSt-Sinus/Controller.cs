@@ -53,7 +53,7 @@ namespace TraSt_Sinus {
             }
 
 
-            _axisGroup = await _motionSystem.Axes.CreateGroup([.. allFoundAxes.Select(a => a.Name)]);       // create an axis group with the requested number of axes
+            _axisGroup = await _motionSystem.Axes.CreateGroup([.. allFoundAxes.Take(requestedAxesCount).Select(a => a.Name)]);       // create an axis group with the requested number of axes
 
             await _axisGroup.Enable().ConfigureAwait(false);                                                // enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
             await _axisGroup.Home().ConfigureAwait(false);                                                  // home all axes in the axis group. This is required to ensure that all axes are in a known position before starting the trajectory streaming.
