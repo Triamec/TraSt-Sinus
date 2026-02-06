@@ -31,6 +31,10 @@ namespace TraSt_Sinus {
         internal double[,] GenerateSegment() {
             long rowsInThisSegment = _maxRowsPerSegment;
 
+            if (NumTotalSegments == 0) {
+                rowsInThisSegment = 0;
+                _isLastSegment = true;
+            } else
             if (_currentSegmentIndex == NumTotalSegments - 1) {
                 _isLastSegment = true;                                                                      // check if this is the last segment
                 if (_numTotalRows % _maxRowsPerSegment != 0) {

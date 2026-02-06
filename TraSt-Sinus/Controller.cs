@@ -64,7 +64,7 @@ namespace TraSt_Sinus {
                 Console.WriteLine("\nHow long should the movement last (seconds)?");
                 string? input = Console.ReadLine();
 
-                if (double.TryParse(input, out _duration)) {                                                // check if valid
+                if (double.TryParse(input, out _duration) && _duration > 0.0) {                             // check if valid
                     break;
                 } else {
                     Console.WriteLine("Invalid input. Please enter a valid number (double).\n");            // if not valid, print error message and continue loop
