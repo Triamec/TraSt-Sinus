@@ -55,7 +55,9 @@ namespace TraSt_Sinus {
 
             _axisGroup = await _motionSystem.Axes.CreateGroup([.. allFoundAxes.Take(requestedAxesCount).Select(a => a.Name)]);       // create an axis group with the requested number of axes
 
+            Console.WriteLine("\nEnabling axes...");
             await _axisGroup.Enable().ConfigureAwait(false);                                                // enable all axis in the axis group, so that they can execute commands. Wait for up to 5 seconds for the axes to be enabled.
+            Console.WriteLine("Homing axes...");
             await _axisGroup.Home().ConfigureAwait(false);                                                  // home all axes in the axis group. This is required to ensure that all axes are in a known position before starting the trajectory streaming.
 
             while (true) {
@@ -70,7 +72,7 @@ namespace TraSt_Sinus {
                 }
             }
 
-            _streaming = await _axisGroup.PrepareTrajectoryStreaming().SetStreamRate((uint)_streamRate).CreateStreamer(); // Prepare the trajectory streaming for the axis group with the specified stream rate
+            _streaming = await _axisGroup.PrepareTrajectoryStreaming().SetStreamRate(_streamRate).CreateStreamer(); // Prepare the trajectory streaming for the axis group with the specified stream rate
             _streaming.Override = 100f;                                                                     // speed override in percent, 100% means the speed is not overridden
 
             _sineSegmentGenerator = new SineSegmentGenerator(_maxPointsPerSegment, _duration, _streamRate, _axisGroup.Count);
