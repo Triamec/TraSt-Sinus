@@ -43,7 +43,7 @@ namespace TraSt_Sinus {
                     Streaming.StopStreaming();
                     AbortedByQ = true;
                 }
-                if((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape) && ListenToExit == true) {
+                if((key.Key == ConsoleKey.Q || key.Key == ConsoleKey.Escape || AbortedByerror) && ListenToExit == true) {
                     Exit = true;
                 }
                 Thread.Sleep(100);
