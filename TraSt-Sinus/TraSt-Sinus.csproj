@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Triamec.Tam.TrajectoryStreaming" Version="0.2.2" />
+    <PackageReference Include="Triamec.Tam.TrajectoryStreaming" Version="0.2.3" />
   </ItemGroup>
 
 </Project>
